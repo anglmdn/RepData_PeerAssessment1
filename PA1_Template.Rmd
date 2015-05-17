@@ -1,0 +1,96 @@
+---
+title: "Assignment 1"
+author: "Angel Medina"
+date: "Saturday, May 16, 2015"
+output: html_document
+---
+For loading the data located in the working directory use the following code:
+```{r loading, echo=TRUE, results="hide"}
+library(dplyr)
+library(lattice)
+library(ggplot2)
+
+data<-read.csv("activity.csv")
+```
+
+###What is mean total number of steps taken per day?
+
+```{r mean total steps, echo=TRUE}
+totals<-aggregate(steps ~ date, data, FUN=sum, na.rm=T)
+hist(totals$steps)
+MEAN<-mean(totals$steps)
+MEDIAN<-median(totals$steps)
+```
+
+The mean of steps taken per day is `r MEAN` and the median is `r MEDIAN`.
+
+###Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+
+```{r interval plot, echo=TRUE}
+avg<-aggregate(steps ~ interval, data, FUN=mean, na.rm=T)
+avg$interval<-formatC(avg$interval, width=4, flag="0")
+d<-avg$interval
+avg$interval<-paste(substr(d,1,2),substr(d,3,4), sep=":")
+avg<-mutate(avg, name=rep("a", 288))
+qplot(avg$interval, avg$steps, geom="line") + geom_line(aes(group=avg$name))
+
+max<-which.max(avg$steps)
+
+num<-avg$steps[104]
+```
+
+The `r max`th interval cointains the maximum step average with `r num`.
+
+###Part 3 working with NA큦
+
+Total number of NA큦
+```{r NA큦, echo=TRUE}
+totalnas<-length(which(is.na(data$steps)))
+```
+
+Number of NA큦 in observations: `r totalnas`.
+
+Filling all missing Values:
+
+```{r filling, echo=TRUE}
+for(i in 1:288){
+        for(j in 0:60){
+                if(is.na(data$steps[i+288*j])){
+                data$steps[i+288*j]<-avg$steps[i]
+                 }
+        
+        }
+}
+
+totals2<-aggregate(steps ~ date, data, FUN=sum)
+hist(totals2$steps)
+
+nmean<-mean(totals2$steps)
+
+nmedian<-median(totals2$steps)
+```
+
+The new mean is `r nmean` and the new median is `r nmedian`. We can observe that the mean stays the same and the median is now equal to the mean.
+
+###Dividing by Weekday/Weekend
+
+```{r, echo=TRUE}
+data$interval<-formatC(data$interval, width=4, flag="0")
+d<-data$interval
+data$interval<-paste(substr(d,1,2),substr(d,3,4), sep=":")
+data<-mutate(data, name=rep("a", 17568))
+
+Sys.setlocale("LC_TIME", "English")
+data$date<-as.Date(data$date, "%Y-%m-%d")
+data<-mutate(data, day=weekdays(data$date))
+data<-mutate(data, type=weekdays(data$date))
+data$type<-ifelse(data$type == "Saturday", "weekend", ifelse(data$type == "Sunday", "weekend", "weekday"))
+
+avg2<-aggregate(steps ~ interval*type, data, FUN=mean)
+
+okLabs<-seq(1, 288, by=50)
+scalesList <- list(x = list(rot = 45, cex = 1.0, 
+labels = avg2$interval[okLabs], at = okLabs))
+xyplot(avg2$steps~as.factor(avg2$interval) | avg2$type, type="l", scales=scalesList)
+```
+
